@@ -12,3 +12,13 @@ pub fn parse_input<T>(day: u8, parser: fn(&str) -> Result<T, Box<Error>>) -> Res
     file.read_to_string(&mut contents)?;
     contents.lines().map(|s| s.trim()).map(|s| parser(s)).collect()
 }
+
+pub fn parse_csv_input<T>(day: u8, parser: fn(&str) -> Result<T, Box<Error>>) -> Result<Vec<T>, Box<Error>>
+{
+    let pathstr = format!(".\\src\\day{}\\input.txt", day);
+    let path = Path::new(&pathstr);
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    contents.split(",").map(|s| s.trim()).map(|s| parser(s)).collect()
+}
