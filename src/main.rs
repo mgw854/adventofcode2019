@@ -2,7 +2,7 @@ use std::error::Error;
 
 mod inputhandling;
 mod intcode;
-mod day1;
+mod day3;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut nounverb = 0;
