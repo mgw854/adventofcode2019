@@ -22,3 +22,29 @@ fn calculate_fuels_fuel(mass_of_fuel: u32) -> u32
         m => m - 2
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_fuels_fuel_6_to_0() {
+        assert_eq!(calculate_fuels_fuel(6), 0);
+    }
+
+    #[test]
+    fn test_calculate_fuels_fuel_3_to_0() {
+        assert_eq!(calculate_fuels_fuel(3), 0);
+    }
+
+    #[test]
+    fn test_calculate_fuels_fuel_1_to_0() {
+        assert_eq!(calculate_fuels_fuel(1), 0);
+    }
+
+    
+    #[test]
+    fn test_calculate_fuels_fuel_15_to_5() {
+        assert_eq!(calculate_fuels_fuel(15), 3);
+    }
+}
