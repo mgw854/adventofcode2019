@@ -1,6 +1,7 @@
 use std::error::Error;
 
 mod inputhandling;
+mod intcode;
 mod day1;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -20,43 +21,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             input[1] = noun;
             input[2] = verb;
         
-            let mut i = 0;
-        
-            while i < input.len() {
-                match input[i] {
-                    1 => {
-                        if i + 4 >= input.len() {
-                            break;
-                        }
-
-                        let store = input[i + 3];
-
-                        if (store >= input.len() || input[i + 1] >= input.len() || input[i+2] >= input.len()){
-                            break;
-                        }
-                        let result = input[input[i + 1]] + input[input[i + 2]];
-                        input[store] = result;
-                    },
-                    2 => {
-                        if i + 4 >= input.len() {
-                            break;
-                        }
-
-                        let store = input[i + 3];
-                        if (store >= input.len() || input[i + 1] >= input.len() || input[i+2] >= input.len()){
-                            break;
-                        }
-                        let result = input[input[i + 1]] * input[input[i + 2]];
-                        input[store] = result;
-                    },
-                    99 => break,
-                    _ => continue
-                }
-        
-                i += 4;
-            }
+            let cpu = intcode::create(input);
     
-            nounverb = input[0];
+            nounverb = cpu.process();
         
             if nounverb == 19690720 {
                 println!("100*noun+verb = {}", 100 * noun + verb);
