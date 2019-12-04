@@ -2,11 +2,11 @@ pub struct Intcode {
   tape: Vec<usize>
 }
 
-pub fn create(tape: Vec<usize>) -> Intcode {
-  Intcode { tape: tape }
-}
-
 impl Intcode {
+  pub fn create(tape: Vec<usize>) -> Intcode {
+    Intcode { tape: tape }
+  }
+
   pub fn process(mut self) -> usize{
     let mut instruction_pointer = 0;
     
@@ -82,10 +82,10 @@ mod tests {
 
     #[test]
     fn test_parsing_instruction() {
-      assert_eq!(create(parse_csv("1,0,0,0,99")).process(), 2); 
-      assert_eq!(create(parse_csv("2,3,0,3,99")).process(), 2); 
-      assert_eq!(create(parse_csv("2,4,4,5,99,0")).process(), 2); 
-      assert_eq!(create(parse_csv("1,0,0,0,99")).process(), 2); 
-      assert_eq!(create(parse_csv("1,1,1,4,99,5,6,0,99")).process(), 30); 
+      assert_eq!(Intcode::create(parse_csv("1,0,0,0,99")).process(), 2); 
+      assert_eq!(Intcode::create(parse_csv("2,3,0,3,99")).process(), 2); 
+      assert_eq!(Intcode::create(parse_csv("2,4,4,5,99,0")).process(), 2); 
+      assert_eq!(Intcode::create(parse_csv("1,0,0,0,99")).process(), 2); 
+      assert_eq!(Intcode::create(parse_csv("1,1,1,4,99,5,6,0,99")).process(), 30); 
     }
 }
