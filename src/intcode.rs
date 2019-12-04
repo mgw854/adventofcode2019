@@ -14,7 +14,7 @@ impl Intcode {
       let res = match Instruction::parse(self.tape[instruction_pointer]) {
         Some(Instruction::Add) => self.three_arg_fn(instruction_pointer, |a, b| a + b),
         Some(Instruction::Multiply) => self.three_arg_fn(instruction_pointer, |a, b| a * b),
-        Some(Instruction::Halt) => InstructionResult { next_instruction_pointer: None, store_address: None, store_value: None },
+        Some(Instruction::Halt) => InstructionResult { next_instruction_pointer: None, store: None },
         None => panic!("Unknown instruction")
       };
 
@@ -22,8 +22,10 @@ impl Intcode {
         Some(x) => instruction_pointer = x,
         None => break
       };
-      
-      self.tape[res.store_address.unwrap()] = res.store_value.unwrap();
+
+      if let Some(store) = res.store {
+        self.tape[store.address] = store.value;
+      }
     }
 
     self.tape[0]
@@ -36,8 +38,7 @@ impl Intcode {
 
     InstructionResult {
       next_instruction_pointer: Some(pointer + 4),
-      store_address: Some(store_address),
-      store_value: Some(store_value)
+      store: Some(StoreInstruction { address: store_address, value: store_value })
     }
   }
 }
@@ -62,6 +63,10 @@ impl Instruction {
 struct InstructionResult
 {
   next_instruction_pointer: Option<usize>,
-  store_address: Option<usize>,
-  store_value: Option<usize>
+  store: Option<StoreInstruction>
+}
+
+struct StoreInstruction {
+  address: usize,
+  value: usize
 }
