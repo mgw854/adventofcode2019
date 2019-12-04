@@ -2,41 +2,17 @@ use std::error::Error;
 
 mod inputhandling;
 mod intcode;
-mod day1;
+mod day3;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut nounverb = 0;
+  let mut input : Vec<Vec<day3::WiringInstruction>> = inputhandling::parse_input_per_line(3, |s| day3::WiringInstruction::parse(s).map_err(|e| e.into()))?;
 
-    let mut noun = 0;
-    let mut verb = 0;
+  let one = day3::generate_positions(&input[0]);
+  let two = day3::generate_positions(&input[1]);
 
-    while noun < 100
-    {
-        verb = 0;
-        while verb < 100
-        {
+  let distance = day3::generate_shortest_path(&one, &two);
 
-            let mut input : Vec<usize> = inputhandling::parse_csv_input(2, |s| s.parse::<usize>().map_err(|e| e.into()))?;
-        
-            input[1] = noun;
-            input[2] = verb;
-        
-            let cpu = intcode::create(input);
-    
-            nounverb = cpu.process();
-        
-            if nounverb == 19690720 {
-                println!("100*noun+verb = {}", 100 * noun + verb);
-                return Ok(());
-            }
+  println!("The shortest distance is {}", distance);
 
-            verb += 1;
-        }
-
-        noun += 1;
-    }
-    
-
-    
-    Ok(())
+  Ok(())
 }
