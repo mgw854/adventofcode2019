@@ -32,10 +32,17 @@ impl WiringInstruction {
   }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash)]
+#[derive(Eq, PartialEq, Debug, Hash, Copy, Clone)]
 pub struct Point {
   x: i32,
   y: i32
+}
+
+
+#[derive(Eq, PartialEq, Debug, Hash)]
+pub struct WirePosition {
+  point: Point,
+  length: u32
 }
 
 pub fn generate_points(instructions: &Vec<WiringInstruction>) -> HashSet<Point> {
@@ -82,8 +89,79 @@ pub fn generate_points(instructions: &Vec<WiringInstruction>) -> HashSet<Point> 
   set
 }
 
+
+pub fn generate_positions(instructions: &Vec<WiringInstruction>) -> Vec<WirePosition> {
+  let mut vec : Vec<WirePosition> = Vec::new();
+
+  let mut originX = 0;
+  let mut originY = 0;
+  let mut totalLen = 0;
+  
+  for instr in instructions {
+    match instr.direction {
+      Direction::Left => {
+        for len in 0..instr.run
+        {
+          originX -= 1;
+          totalLen += 1;
+          vec.push(WirePosition { point: Point { x: originX, y: originY }, length: totalLen });
+        }
+      },
+      Direction::Right => {
+        for len in 0..instr.run
+        {
+          originX += 1;
+          totalLen += 1;
+          vec.push(WirePosition { point: Point { x: originX, y: originY }, length: totalLen });
+        }
+      },
+      Direction::Up => {
+        for len in 0..instr.run
+        {
+          originY += 1;
+          totalLen += 1;
+          vec.push(WirePosition { point: Point { x: originX, y: originY }, length: totalLen });
+        }
+      },
+      Direction::Down => {
+        for len in 0..instr.run
+        {
+          originY -= 1;
+          totalLen += 1;
+          vec.push(WirePosition { point: Point { x: originX, y: originY }, length: totalLen });
+        }
+      }
+    }
+  };
+
+  vec
+}
+
 pub fn generate_manhattan_distance(one: &HashSet<Point>, two: &HashSet<Point>) -> u32 {
   one.intersection(two).map(|pt| i32::abs(pt.x) + i32::abs(pt.y)).min().unwrap() as u32
+}
+
+pub fn generate_shortest_path(one: &Vec<WirePosition>, two: &Vec<WirePosition>) -> u32 {
+  let oneHash : HashSet<Point> = one.iter().map(|p| p.point).collect();
+  let twoHash : HashSet<Point> = two.iter().map(|p| p.point).collect();
+
+  let mut minPath = 2000000000;
+
+  for pt in oneHash.intersection(&twoHash)
+  {
+    let oneDistance = one.iter().filter(|o| o.point == *pt).min_by(|wp, y| wp.length.cmp(&y.length));
+    let twoDistance = two.iter().filter(|o| o.point == *pt).min_by(|wp, y| wp.length.cmp(&y.length));
+
+    if let Some(oneD) = oneDistance {
+      if let Some(twoD) = twoDistance {
+        if oneD.length + twoD.length < minPath {
+          minPath = oneD.length + twoD.length;
+        }
+      }
+    }
+  };
+
+  minPath
 }
 
 #[cfg(test)]
@@ -132,4 +210,41 @@ mod tests {
       let distance = generate_manhattan_distance(&one, &two);
 
       assert_eq!(distance, 135);
-    }}
+    }
+ 
+    #[test]
+    fn test_steps() {
+      let input = "R75,D30,R83,U83,L12,D49,R71,U7,L72
+      U62,R66,U55,R34,D71,R55,D58,R83";
+
+      let directions : Vec<Vec<WiringInstruction>> = input
+      .lines()
+      .map(|s| s.trim().split(",").map(|x| WiringInstruction::parse(x).unwrap()).collect())
+      .collect();
+      
+      let one = generate_positions(&directions[0]);
+      let two = generate_positions(&directions[1]);
+
+      let distance = generate_shortest_path(&one, &two);
+
+      assert_eq!(distance, 610);
+    } 
+    
+    #[test]
+    fn test_steps2() {
+      let input = "R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51
+      U98,R91,D20,R16,D67,R40,U7,R15,U6,R7";
+
+      let directions : Vec<Vec<WiringInstruction>> = input
+      .lines()
+      .map(|s| s.trim().split(",").map(|x| WiringInstruction::parse(x).unwrap()).collect())
+      .collect();
+      
+      let one = generate_positions(&directions[0]);
+      let two = generate_positions(&directions[1]);
+
+      let distance = generate_shortest_path(&one, &two);
+
+      assert_eq!(distance, 410);
+    } 
+  }
