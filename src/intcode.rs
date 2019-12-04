@@ -70,3 +70,22 @@ struct StoreInstruction {
   address: usize,
   value: usize
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_csv(input: &str) -> Vec<usize> {
+      input.split(",").map(|s| s.trim()).map(|s| s.parse::<usize>().unwrap()).collect()
+    }
+
+    #[test]
+    fn test_parsing_instruction() {
+      assert_eq!(create(parse_csv("1,0,0,0,99")).process(), 2); 
+      assert_eq!(create(parse_csv("2,3,0,3,99")).process(), 2); 
+      assert_eq!(create(parse_csv("2,4,4,5,99,0")).process(), 2); 
+      assert_eq!(create(parse_csv("1,0,0,0,99")).process(), 2); 
+      assert_eq!(create(parse_csv("1,1,1,4,99,5,6,0,99")).process(), 30); 
+    }
+}
