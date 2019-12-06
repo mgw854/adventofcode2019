@@ -1,15 +1,15 @@
 pub struct Intcode {
   tape: Vec<i32>,
   pub input: i32,
-  output: Option<i32>
+  output: Vec<i32>
 }
 
 impl Intcode {
   pub fn create(tape: Vec<i32>) -> Intcode {
-    Intcode { tape: tape, input: 0, output: None }
+    Intcode { tape: tape, input: 0, output: Vec::new() }
   }
 
-  pub fn process(mut self) -> i32 {
+  pub fn process(mut self) -> (Self, i32) {
     let mut instruction_pointer = 0;
     
     while instruction_pointer < self.tape.len() {
@@ -32,10 +32,12 @@ impl Intcode {
       }
     }
 
-    self.tape[0]
+    let firstPos = self.tape[0];
+
+    (self, firstPos)
   }
 
-  pub fn read_output(&self) -> Option<i32> {
+  pub fn read_output(self) -> Vec<i32> {
     self.output
   }
 
@@ -47,7 +49,9 @@ impl Intcode {
   }
 
   fn write_output(&mut self, pointer: usize) -> InstructionResult {
-    self.output = Some(self.tape[pointer + 1]);
+    self.output.push(self.get_parameter(pointer, 1));
+
+    println!("Push");
 
     InstructionResult {
       next_instruction_pointer: Some(pointer + 2),
@@ -144,11 +148,24 @@ mod tests {
 
     #[test]
     fn test_parsing_instruction() {
-      assert_eq!(Intcode::create(parse_csv("1,0,0,0,99")).process(), 2); 
-      assert_eq!(Intcode::create(parse_csv("2,3,0,3,99")).process(), 2); 
-      assert_eq!(Intcode::create(parse_csv("2,4,4,5,99,0")).process(), 2); 
-      assert_eq!(Intcode::create(parse_csv("1,0,0,0,99")).process(), 2); 
-      assert_eq!(Intcode::create(parse_csv("1,1,1,4,99,5,6,0,99")).process(), 30); 
+      assert_eq!(Intcode::create(parse_csv("1,0,0,0,99")).process().1, 2); 
+      assert_eq!(Intcode::create(parse_csv("2,3,0,3,99")).process().1, 2); 
+      assert_eq!(Intcode::create(parse_csv("2,4,4,5,99,0")).process().1, 2); 
+      assert_eq!(Intcode::create(parse_csv("1,0,0,0,99")).process().1, 2); 
+      assert_eq!(Intcode::create(parse_csv("1,1,1,4,99,5,6,0,99")).process().1, 30); 
+
+
+      assert_eq!(Intcode::create(parse_csv("1002,4,3,4,33")).process().0.tape[4], 99);
+      assert_eq!(Intcode::create(parse_csv("1101,100,-1,4,0")).process().0.tape[4], 99);      
+    }
+
+    #[test]
+    fn test_input_output() {
+      let mut cpu = Intcode::create(parse_csv("3,0,4,0,99"));
+      cpu.input = 365;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 365);
     }
 
     #[test]
