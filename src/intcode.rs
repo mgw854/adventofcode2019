@@ -38,9 +38,9 @@ impl Intcode {
       }
     }
 
-    let firstPos = self.tape[0];
+    let first_pos_value = self.tape[0];
 
-    (self, firstPos)
+    (self, first_pos_value)
   }
 
   pub fn read_output(self) -> Vec<i32> {
