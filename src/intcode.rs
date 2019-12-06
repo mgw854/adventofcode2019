@@ -18,6 +18,12 @@ impl Intcode {
         Some(Instruction::Multiply) => self.three_arg_fn(instruction_pointer, |a, b| a * b),
         Some(Instruction::StoreInput) => self.store_input(instruction_pointer),
         Some(Instruction::WriteOutput) => self.write_output(instruction_pointer),
+
+        Some(Instruction::JumpIfTrue) => self.jump(instruction_pointer, true),
+        Some(Instruction::JumpIfFalse) => self.jump(instruction_pointer, false),
+        Some(Instruction::LessThan) => self.compare_args(instruction_pointer, |a, b| a < b),
+        Some(Instruction::Equals) => self.compare_args(instruction_pointer, |a, b| a == b),
+
         Some(Instruction::Halt) => InstructionResult { next_instruction_pointer: None, store: None },
         None => panic!("Unknown instruction")
       };
@@ -39,6 +45,29 @@ impl Intcode {
 
   pub fn read_output(self) -> Vec<i32> {
     self.output
+  }
+
+  fn jump(&self, pointer: usize, jump_if: bool) -> InstructionResult {
+    let eval = self.get_parameter(pointer, 1);
+    let next = match jump_if {
+      true => if eval != 0 { self.get_parameter(pointer, 2) as usize } else { pointer + 3 },
+      false => if eval == 0 { self.get_parameter(pointer, 2) as usize } else { pointer + 3 }
+    };
+
+    InstructionResult {
+      next_instruction_pointer: Some(next),
+      store: None
+    }
+  }
+
+  fn compare_args(&self, pointer: usize, func: fn(i32, i32) -> bool) -> InstructionResult {
+    let store_address : usize = self.tape[pointer + 3] as usize;
+    let result = func(self.get_parameter(pointer, 1), self.get_parameter(pointer, 2));
+    
+    InstructionResult {
+      next_instruction_pointer: Some(pointer + 4),
+      store: Some(StoreInstruction { address: store_address, value: if result { 1 } else { 0 } })
+    }
   }
 
   fn store_input(&self, pointer: usize) -> InstructionResult {
@@ -84,6 +113,10 @@ enum Instruction {
   Multiply,
   StoreInput,
   WriteOutput,
+  JumpIfTrue,
+  JumpIfFalse,
+  LessThan,
+  Equals,
   Halt
 }
 
@@ -94,6 +127,10 @@ impl Instruction {
       2 => Some(Instruction::Multiply),
       3 => Some(Instruction::StoreInput),
       4 => Some(Instruction::WriteOutput),
+      5 => Some(Instruction::JumpIfTrue),
+      6 => Some(Instruction::JumpIfFalse),
+      7 => Some(Instruction::LessThan),
+      8 => Some(Instruction::Equals),
       99 => Some(Instruction::Halt),
       _ => None
     }
@@ -110,11 +147,9 @@ impl ParameterMode {
   fn parse(opcode: i32, at_position: usize) -> Option<ParameterMode> {
     let string = (opcode / 100).to_string();
 
-    println!("Parammode: {}", string);
     let chars = string.chars().rev().collect::<Vec<char>>();
 
     if at_position > chars.len() {
-      println!("No");
       return Some(ParameterMode::Position);
     }
 
@@ -166,6 +201,87 @@ mod tests {
       let cpu = cpu.process().0;
 
       assert_eq!(cpu.read_output()[0], 365);
+    }
+
+    #[test]
+    fn test_day5_part2_position_eq() {
+      let mut cpu = Intcode::create(parse_csv("3,9,8,9,10,9,4,9,99,-1,8"));
+      cpu.input = 8;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 1);
+    }
+
+    #[test]
+    fn test_day5_part2_position_lt() {
+      let mut cpu = Intcode::create(parse_csv("3,9,7,9,10,9,4,9,99,-1,8"));
+      cpu.input = 5;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 1);
+    }
+    
+    #[test]
+    fn test_day5_part2_immediate_eq() {
+      let mut cpu = Intcode::create(parse_csv("3,3,1108,-1,8,3,4,3,99"));
+      cpu.input = 8;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 1);
+    }
+    
+    #[test]
+    fn test_day5_part2_immediate_lt() {
+      let mut cpu = Intcode::create(parse_csv("3,3,1107,-1,8,3,4,3,99"));
+      cpu.input = 5;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 1);
+    }
+    
+    #[test]
+    fn test_day5_part2_position_jump() {
+      let mut cpu = Intcode::create(parse_csv("3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9"));
+      cpu.input = 0;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 0);
+    }
+    
+    #[test]
+    fn test_day5_part2_immediate_jump() {
+      let mut cpu = Intcode::create(parse_csv("3,3,1105,-1,9,1101,0,0,12,4,12,99,1"));
+      cpu.input = 0;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 0);
+    }
+    
+    #[test]
+    fn test_day5_part2_999_lt_8() {
+      let mut cpu = Intcode::create(parse_csv("3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"));
+      cpu.input = 4;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 999);
+    }
+    
+    #[test]
+    fn test_day5_part2_1000_eq_8() {
+      let mut cpu = Intcode::create(parse_csv("3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"));
+      cpu.input = 8;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 1000);
+    }
+
+    #[test]
+    fn test_day5_part2_1001_gt_8() {
+      let mut cpu = Intcode::create(parse_csv("3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"));
+      cpu.input = 9;
+      let cpu = cpu.process().0;
+
+      assert_eq!(cpu.read_output()[0], 1001);
     }
 
     #[test]
