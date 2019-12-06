@@ -1,13 +1,13 @@
 pub struct Intcode {
-  tape: Vec<usize>
+  tape: Vec<i32>
 }
 
 impl Intcode {
-  pub fn create(tape: Vec<usize>) -> Intcode {
+  pub fn create(tape: Vec<i32>) -> Intcode {
     Intcode { tape: tape }
   }
 
-  pub fn process(mut self) -> usize{
+  pub fn process(mut self) -> i32{
     let mut instruction_pointer = 0;
     
     while instruction_pointer < self.tape.len() {
@@ -30,11 +30,11 @@ impl Intcode {
 
     self.tape[0]
   }
-  
-  fn three_arg_fn(&self, pointer: usize, func: fn(usize, usize) -> usize) -> InstructionResult
+
+  fn three_arg_fn(&self, pointer: usize, func: fn(i32, i32) -> i32) -> InstructionResult
   {
-    let store_address = self.tape[pointer + 3];
-    let store_value = func(self.tape[self.tape[pointer + 1]], self.tape[self.tape[pointer + 2]]);
+    let store_address : usize = self.tape[pointer + 3] as usize;
+    let store_value = func(self.tape[self.tape[pointer + 1] as  usize], self.tape[self.tape[pointer + 2] as usize]);
 
     InstructionResult {
       next_instruction_pointer: Some(pointer + 4),
@@ -50,7 +50,7 @@ enum Instruction {
 }
 
 impl Instruction {
-  fn parse(opcode: usize) -> Option<Instruction> {
+  fn parse(opcode: i32) -> Option<Instruction> {
     match opcode {
       1 => Some(Instruction::Add),
       2 => Some(Instruction::Multiply),
@@ -68,7 +68,7 @@ struct InstructionResult
 
 struct StoreInstruction {
   address: usize,
-  value: usize
+  value: i32
 }
 
 
@@ -76,8 +76,8 @@ struct StoreInstruction {
 mod tests {
     use super::*;
 
-    fn parse_csv(input: &str) -> Vec<usize> {
-      input.split(",").map(|s| s.trim()).map(|s| s.parse::<usize>().unwrap()).collect()
+    fn parse_csv(input: &str) -> Vec<i32> {
+      input.split(",").map(|s| s.trim()).map(|s| s.parse::<i32>().unwrap()).collect()
     }
 
     #[test]
