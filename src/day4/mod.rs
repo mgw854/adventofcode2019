@@ -1,45 +1,9 @@
+use super::fancyiters;
+
 pub fn adjacent_are_same(password: &str) -> bool {
-  let mut vec = password.chars().collect::<Vec<char>>();
+  let vec = fancyiters::eliminate_runs(password.chars()).collect::<Vec<char>>();
 
-  let mut ignore = Vec::<usize>::new();
-
-  let mut prevChar = ' ';
-  let mut hits = 0;
-  let mut index = 0;
-
-  for character in vec.iter() {
-    if *character == prevChar {
-      hits += 1;
-    }
-    else {
-      if hits > 2 {
-        while hits > 0 {
-          ignore.push(index - hits);
-          hits -= 1;
-        }
-      }
-
-      prevChar = *character;
-      hits = 1;
-    }
-
-    index += 1;
-  }
-
-  if hits > 2 {
-    while hits > 0 {
-      ignore.push(index - hits);
-      hits -= 1;
-    }
-  }
-
-  ignore.sort();
-
-  for i in ignore.iter().rev() {
-    vec.remove(*i);
-  }
-
-  let mut iter = vec.windows(2);
+  let iter = vec.windows(2);
 
   for pair in iter {
     if pair[0] == pair[1] {
