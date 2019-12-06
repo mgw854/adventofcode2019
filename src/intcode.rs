@@ -1,13 +1,15 @@
 pub struct Intcode {
-  tape: Vec<i32>
+  tape: Vec<i32>,
+  pub input: i32,
+  output: Option<i32>
 }
 
 impl Intcode {
   pub fn create(tape: Vec<i32>) -> Intcode {
-    Intcode { tape: tape }
+    Intcode { tape: tape, input: 0, output: None }
   }
 
-  pub fn process(mut self) -> i32{
+  pub fn process(mut self) -> i32 {
     let mut instruction_pointer = 0;
     
     while instruction_pointer < self.tape.len() {
@@ -15,6 +17,7 @@ impl Intcode {
         Some(Instruction::Add) => self.three_arg_fn(instruction_pointer, |a, b| a + b),
         Some(Instruction::Multiply) => self.three_arg_fn(instruction_pointer, |a, b| a * b),
         Some(Instruction::Halt) => InstructionResult { next_instruction_pointer: None, store: None },
+        Some(x) => panic!("Unknown instruction"),
         None => panic!("Unknown instruction")
       };
 
@@ -29,6 +32,10 @@ impl Intcode {
     }
 
     self.tape[0]
+  }
+
+  pub fn read_output(&self) -> Option<i32> {
+    self.output
   }
 
   fn three_arg_fn(&self, pointer: usize, func: fn(i32, i32) -> i32) -> InstructionResult
@@ -46,15 +53,42 @@ impl Intcode {
 enum Instruction {
   Add,
   Multiply,
+  StoreInput,
+  WriteOutput,
   Halt
 }
 
 impl Instruction {
   fn parse(opcode: i32) -> Option<Instruction> {
-    match opcode {
+    match opcode % 100 {
       1 => Some(Instruction::Add),
       2 => Some(Instruction::Multiply),
+      3 => Some(Instruction::StoreInput),
+      4 => Some(Instruction::WriteOutput),
       99 => Some(Instruction::Halt),
+      _ => None
+    }
+  }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ParameterMode {
+  Position,
+  Immediate
+}
+
+impl ParameterMode {
+  fn parse(opcode: i32, at_position: usize) -> Option<ParameterMode> {
+    let string = (opcode / 100).to_string();
+    let chars = string.chars().rev().collect::<Vec<char>>();
+
+    if at_position > chars.len() {
+      return Some(ParameterMode::Position);
+    }
+
+    match chars[at_position - 1] {
+      '0' => Some(ParameterMode::Position),
+      '1' => Some(ParameterMode::Immediate),
       _ => None
     }
   }
@@ -87,5 +121,12 @@ mod tests {
       assert_eq!(Intcode::create(parse_csv("2,4,4,5,99,0")).process(), 2); 
       assert_eq!(Intcode::create(parse_csv("1,0,0,0,99")).process(), 2); 
       assert_eq!(Intcode::create(parse_csv("1,1,1,4,99,5,6,0,99")).process(), 30); 
+    }
+
+    #[test]
+    fn test_parsing_parameter_mode(){
+      assert_eq!(ParameterMode::parse(1002, 1), Some(ParameterMode::Position));
+      assert_eq!(ParameterMode::parse(1002, 2), Some(ParameterMode::Immediate));
+      assert_eq!(ParameterMode::parse(1002, 3), Some(ParameterMode::Position));
     }
 }
