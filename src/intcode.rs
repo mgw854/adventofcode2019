@@ -16,8 +16,9 @@ impl Intcode {
       let res = match Instruction::parse(self.tape[instruction_pointer]) {
         Some(Instruction::Add) => self.three_arg_fn(instruction_pointer, |a, b| a + b),
         Some(Instruction::Multiply) => self.three_arg_fn(instruction_pointer, |a, b| a * b),
+        Some(Instruction::StoreInput) => self.store_input(instruction_pointer),
+        Some(Instruction::WriteOutput) => self.write_output(instruction_pointer),
         Some(Instruction::Halt) => InstructionResult { next_instruction_pointer: None, store: None },
-        Some(x) => panic!("Unknown instruction"),
         None => panic!("Unknown instruction")
       };
 
@@ -38,14 +39,38 @@ impl Intcode {
     self.output
   }
 
+  fn store_input(&self, pointer: usize) -> InstructionResult {
+    InstructionResult {
+      next_instruction_pointer: Some(pointer + 2),
+      store: Some(StoreInstruction { address: self.tape[pointer + 1] as usize, value: self.input })
+    }
+  }
+
+  fn write_output(&mut self, pointer: usize) -> InstructionResult {
+    self.output = Some(self.tape[pointer + 1]);
+
+    InstructionResult {
+      next_instruction_pointer: Some(pointer + 2),
+      store: None
+    }
+  }
+
   fn three_arg_fn(&self, pointer: usize, func: fn(i32, i32) -> i32) -> InstructionResult
   {
     let store_address : usize = self.tape[pointer + 3] as usize;
-    let store_value = func(self.tape[self.tape[pointer + 1] as  usize], self.tape[self.tape[pointer + 2] as usize]);
+    let store_value = func(self.get_parameter(pointer, 1), self.get_parameter(pointer, 2));
 
     InstructionResult {
       next_instruction_pointer: Some(pointer + 4),
       store: Some(StoreInstruction { address: store_address, value: store_value })
+    }
+  }
+
+  fn get_parameter(&self, instruction_pointer: usize, at_position: usize) -> i32 {
+    match ParameterMode::parse(self.tape[instruction_pointer], at_position) {
+      Some(ParameterMode::Immediate) => self.tape[instruction_pointer + at_position],
+      Some(ParameterMode::Position) => self.tape[self.tape[instruction_pointer + at_position] as usize],
+      None => panic!("Unknown parameter mode")
     }
   }
 }
@@ -80,9 +105,12 @@ enum ParameterMode {
 impl ParameterMode {
   fn parse(opcode: i32, at_position: usize) -> Option<ParameterMode> {
     let string = (opcode / 100).to_string();
+
+    println!("Parammode: {}", string);
     let chars = string.chars().rev().collect::<Vec<char>>();
 
     if at_position > chars.len() {
+      println!("No");
       return Some(ParameterMode::Position);
     }
 
