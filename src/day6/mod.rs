@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use petgraph::graphmap::DiGraphMap;
 
@@ -61,6 +62,35 @@ fn calculate_orbits_recursive(graph: &DiGraphMap<CelestialBody, ()>, from: Celes
   orbits
 }
 
+pub fn calculate_ancestors(graph: &DiGraphMap<CelestialBody, ()>, from: CelestialBody) -> HashMap<CelestialBody, u32> {
+  let mut ancestors = HashMap::new();
+
+  let mut ancestor = graph.neighbors_directed(from, petgraph::Direction::Incoming).nth(0).unwrap(); // There's always one
+  let mut distance = 0;
+
+  while (ancestor != CelestialBody { one: 'C', two: 'O', three: 'M' }) {
+    ancestors.insert(ancestor, distance);
+    distance += 1;
+    ancestor = graph.neighbors_directed(ancestor, petgraph::Direction::Incoming).nth(0).unwrap(); // There's always one
+  }
+
+  ancestors
+}
+
+pub fn calculate_most_common_ancestor(one: &HashMap<CelestialBody, u32>, two: &HashMap<CelestialBody, u32>) -> u32 {
+  let mut min_len = 20000000;
+
+  for (node, value) in one {
+    if let Some(two_val) = two.get(node) {
+      if value + two_val < min_len {
+        min_len = value + two_val;
+      }
+    }
+  }
+  
+  min_len
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,5 +110,30 @@ mod tests {
       00K)00L".lines().map(|l| OrbitalDirection::parse(l.trim()).unwrap()).collect();
       let map = generate_map(&input);
       assert_eq!(calculate_orbits(&map), 42);
+    }
+
+    #[test]
+    fn given_input_part2(){
+      let input = "COM)00B
+      00B)00C
+      00C)00D
+      00D)00E
+      00E)00F
+      00B)00G
+      00G)00H
+      00D)00I
+      00E)00J
+      00J)00K
+      00K)00L
+      00K)YOU
+      00I)SAN".lines().map(|l| OrbitalDirection::parse(l.trim()).unwrap()).collect();
+      let map = generate_map(&input);
+      let santa_ancestors = calculate_ancestors(&map, CelestialBody { one: 'S', two: 'A', three: 'N' });
+      let you_ancestors = calculate_ancestors(&map, CelestialBody { one: 'Y', two: 'O', three: 'U' });
+
+      dbg!(&santa_ancestors);
+      dbg!(&you_ancestors);
+
+      assert_eq!(calculate_most_common_ancestor(&santa_ancestors, &you_ancestors), 4);
     }
 }

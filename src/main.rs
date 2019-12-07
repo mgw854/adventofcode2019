@@ -10,8 +10,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     inputhandling::parse_input_per_line(6, |s| day6::OrbitalDirection::parse(s).map_err(|e| e.into()))?;
 
     let graph = day6::generate_map(&flat_directions);
-   
-    println!("The total number of orbits is {}", day6::calculate_orbits(&graph));
+    let santa_ancestors = day6::calculate_ancestors(&graph, day6::CelestialBody { one: 'S', two: 'A', three: 'N' });
+    let you_ancestors = day6::calculate_ancestors(&graph, day6::CelestialBody { one: 'Y', two: 'O', three: 'U' });
+
+
+    println!("The total number of orbital jumps required is {}", day6::calculate_most_common_ancestor(&santa_ancestors, &you_ancestors));
 
   Ok(())
 }
