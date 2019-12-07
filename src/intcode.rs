@@ -1,15 +1,17 @@
 pub struct Intcode {
     tape: Vec<i32>,
-    pub input: i32,
+    pub input: Vec<i32>,
     output: Vec<i32>,
+    input_position: usize
 }
 
 impl Intcode {
     pub fn create(tape: Vec<i32>) -> Intcode {
         Intcode {
             tape: tape,
-            input: 0,
+            input: Vec::new(),
             output: Vec::new(),
+            input_position: 0
         }
     }
 
@@ -95,14 +97,31 @@ impl Intcode {
         }
     }
 
-    fn store_input(&self, pointer: usize) -> InstructionResult {
+    fn store_input(&mut self, pointer: usize) -> InstructionResult {
         InstructionResult {
             next_instruction_pointer: Some(pointer + 2),
             store: Some(StoreInstruction {
                 address: self.tape[pointer + 1] as usize,
-                value: self.input,
+                value: self.get_current_input(),
             }),
         }
+    }
+
+    fn get_current_input(&mut self) -> i32 {
+      if self.input.len() == 0 {
+        return 0;
+      }
+
+      if self.input_position >= self.input.len()
+      {
+        self.input_position = 0;
+      }
+
+      let retval = self.input[self.input_position];
+
+      self.input_position += 1;
+
+      retval
     }
 
     fn write_output(&mut self, pointer: usize) -> InstructionResult {
@@ -247,7 +266,7 @@ mod tests {
     #[test]
     fn test_input_output() {
         let mut cpu = Intcode::create(parse_csv("3,0,4,0,99"));
-        cpu.input = 365;
+        cpu.input = vec![365];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 365);
@@ -256,7 +275,7 @@ mod tests {
     #[test]
     fn test_day5_part2_position_eq() {
         let mut cpu = Intcode::create(parse_csv("3,9,8,9,10,9,4,9,99,-1,8"));
-        cpu.input = 8;
+        cpu.input = vec![8];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 1);
@@ -265,7 +284,7 @@ mod tests {
     #[test]
     fn test_day5_part2_position_lt() {
         let mut cpu = Intcode::create(parse_csv("3,9,7,9,10,9,4,9,99,-1,8"));
-        cpu.input = 5;
+        cpu.input = vec![5];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 1);
@@ -274,7 +293,7 @@ mod tests {
     #[test]
     fn test_day5_part2_immediate_eq() {
         let mut cpu = Intcode::create(parse_csv("3,3,1108,-1,8,3,4,3,99"));
-        cpu.input = 8;
+        cpu.input = vec![8];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 1);
@@ -283,7 +302,7 @@ mod tests {
     #[test]
     fn test_day5_part2_immediate_lt() {
         let mut cpu = Intcode::create(parse_csv("3,3,1107,-1,8,3,4,3,99"));
-        cpu.input = 5;
+        cpu.input = vec![5];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 1);
@@ -292,7 +311,7 @@ mod tests {
     #[test]
     fn test_day5_part2_position_jump() {
         let mut cpu = Intcode::create(parse_csv("3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9"));
-        cpu.input = 0;
+        cpu.input = vec![0];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 0);
@@ -301,7 +320,7 @@ mod tests {
     #[test]
     fn test_day5_part2_immediate_jump() {
         let mut cpu = Intcode::create(parse_csv("3,3,1105,-1,9,1101,0,0,12,4,12,99,1"));
-        cpu.input = 0;
+        cpu.input = vec![0];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 0);
@@ -310,7 +329,7 @@ mod tests {
     #[test]
     fn test_day5_part2_999_lt_8() {
         let mut cpu = Intcode::create(parse_csv("3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"));
-        cpu.input = 4;
+        cpu.input = vec![4];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 999);
@@ -319,7 +338,7 @@ mod tests {
     #[test]
     fn test_day5_part2_1000_eq_8() {
         let mut cpu = Intcode::create(parse_csv("3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"));
-        cpu.input = 8;
+        cpu.input = vec![8];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 1000);
@@ -328,7 +347,7 @@ mod tests {
     #[test]
     fn test_day5_part2_1001_gt_8() {
         let mut cpu = Intcode::create(parse_csv("3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99"));
-        cpu.input = 9;
+        cpu.input = vec![9];
         let cpu = cpu.process().0;
 
         assert_eq!(cpu.read_output()[0], 1001);

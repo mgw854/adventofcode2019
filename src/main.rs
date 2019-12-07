@@ -1,6 +1,7 @@
 use std::error::Error;
 
 mod day6;
+mod day7;
 mod fancyiters;
 mod inputhandling;
 mod intcode;
