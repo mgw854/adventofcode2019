@@ -22,6 +22,21 @@ pub fn parse_input<T>(
 pub fn parse_input_per_line<T>(
     day: u8,
     parser: fn(&str) -> Result<T, Box<dyn Error>>,
+) -> Result<Vec<T>, Box<dyn Error>> {
+    let pathstr = format!(".\\src\\day{}\\input.txt", day);
+    let path = Path::new(&pathstr);
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    contents
+        .lines()
+        .map(|mut s| parser(s.trim()))
+        .collect()
+}
+
+pub fn parse_input_csv_per_line<T>(
+    day: u8,
+    parser: fn(&str) -> Result<T, Box<dyn Error>>,
 ) -> Result<Vec<Vec<T>>, Box<dyn Error>> {
     let pathstr = format!(".\\src\\day{}\\input.txt", day);
     let path = Path::new(&pathstr);

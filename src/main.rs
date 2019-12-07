@@ -1,20 +1,18 @@
 use std::error::Error;
 
-mod day4;
+mod day6;
 mod fancyiters;
 mod inputhandling;
 mod intcode;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let vonNeumann: Vec<i32> =
-        inputhandling::parse_csv_input(5, |s| s.parse::<i32>().map_err(|e| e.into()))?;
+  let flat_directions: Vec<day6::OrbitalDirection> =
+    inputhandling::parse_input_per_line(6, |s| day6::OrbitalDirection::parse(s).map_err(|e| e.into()))?;
 
-    let mut cpu = intcode::Intcode::create(vonNeumann);
-    cpu.input = 5;
+    let graph = day6::generate_map(&flat_directions);
+   
+    println!("The total number of orbits is {}", day6::calculate_orbits(&graph));
 
-    let cpu = cpu.process().0;
-
-    dbg!(cpu.read_output());
-
-    Ok(())
+  Ok(())
 }
+
