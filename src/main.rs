@@ -1,19 +1,21 @@
 use std::error::Error;
 
+mod day6;
+mod fancyiters;
 mod inputhandling;
 mod intcode;
-mod day4;
-mod fancyiters;
 
 fn main() -> Result<(), Box<dyn Error>> {
-  let vonNeumann : Vec<i32> = inputhandling::parse_csv_input(5, |s| s.parse::<i32>().map_err(|e| e.into()))?;
+  let flat_directions: Vec<day6::OrbitalDirection> =
+    inputhandling::parse_input_per_line(6, |s| day6::OrbitalDirection::parse(s).map_err(|e| e.into()))?;
 
-  let mut cpu = intcode::Intcode::create(vonNeumann);
-  cpu.input =  5;
+    let graph = day6::generate_map(&flat_directions);
+    let santa_ancestors = day6::calculate_ancestors(&graph, day6::CelestialBody { one: 'S', two: 'A', three: 'N' });
+    let you_ancestors = day6::calculate_ancestors(&graph, day6::CelestialBody { one: 'Y', two: 'O', three: 'U' });
 
-  let cpu = cpu.process().0;
 
-  dbg!(cpu.read_output());
+    println!("The total number of orbital jumps required is {}", day6::calculate_most_common_ancestor(&santa_ancestors, &you_ancestors));
 
   Ok(())
 }
+
