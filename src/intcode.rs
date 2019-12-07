@@ -126,9 +126,6 @@ impl Intcode {
 
     fn write_output(&mut self, pointer: usize) -> InstructionResult {
         self.output.push(self.get_parameter(pointer, 1));
-
-        println!("Push");
-
         InstructionResult {
             next_instruction_pointer: Some(pointer + 2),
             store: None,
