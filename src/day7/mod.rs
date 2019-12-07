@@ -160,7 +160,6 @@ mod tests {
     let cpu2 = Intcode::create(parse_csv(instructions));
     let cpu3 = Intcode::create(parse_csv(instructions));
     let cpu4 = Intcode::create(parse_csv(instructions));
-    println!("HELP");
 
     let mut amp0 = Amplifier::create(9, 0, cpu0);
     let mut amp1 = Amplifier::create_no_value(8, cpu1);

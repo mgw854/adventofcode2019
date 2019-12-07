@@ -9,26 +9,54 @@ fn main() -> Result<(), Box<dyn Error>> {
   let vonNeumann : Vec<i32> = inputhandling::parse_csv_input(7, |s| s.parse::<i32>().map_err(|e| e.into()))?;
 
   let mut max = 0;
-/*
+
   for sequence in day7::phase_setting_generator() {
-    let mut cpu0 = intcode::Intcode::create(vonNeumann.clone());
-    let mut cpu1 = intcode::Intcode::create(vonNeumann.clone());
-    let mut cpu2 = intcode::Intcode::create(vonNeumann.clone());
-    let mut cpu3 = intcode::Intcode::create(vonNeumann.clone());
-    let mut cpu4 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu0 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu1 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu2 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu3 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu4 = intcode::Intcode::create(vonNeumann.clone());
 
-    let mut amp0 = day7::Amplifier::create(sequence[0], 0);
-    let mut amp1 = day7::Amplifier::create(sequence[1], amp0.run(cpu0));
-    let mut amp2 = day7::Amplifier::create(sequence[2], amp1.run(cpu1));
-    let mut amp3 = day7::Amplifier::create(sequence[3], amp2.run(cpu2));
-    let mut amp4 = day7::Amplifier::create(sequence[4], amp3.run(cpu3));
-    let final_ouput = amp4.run(cpu4);
+    let mut amp0 = day7::Amplifier::create(sequence[0], 0, cpu0);
+    let mut amp1 = day7::Amplifier::create_no_value(sequence[1], cpu1);
+    let mut amp2 = day7::Amplifier::create_no_value(sequence[2], cpu2);
+    let mut amp3 = day7::Amplifier::create_no_value(sequence[3], cpu3);
+    let mut amp4 = day7::Amplifier::create_no_value(sequence[4], cpu4);
 
-    if final_ouput > max {
-      max = final_ouput;
+    let mut halted = false;
+
+    while !halted {
+      amp1.input_signal = match amp0.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp2.input_signal = match amp1.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp3.input_signal = match amp2.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp4.input_signal = match amp3.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp0.input_signal = match amp4.run() {
+        day7::AmplifierState::Halt { value: x } => { halted = true; x },
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+    }
+
+    if amp0.input_signal > max {
+      max = amp0.input_signal;
     }
   }
-*/
+
   println!("The maximum output is {}", max);
 
   Ok(())
