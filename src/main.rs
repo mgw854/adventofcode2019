@@ -4,6 +4,7 @@ mod day7;
 mod fancyiters;
 mod inputhandling;
 mod intcode;
+mod intcode_8086;
 
 fn main() -> Result<(), Box<dyn Error>> {
   let vonNeumann : Vec<i32> = inputhandling::parse_csv_input(7, |s| s.parse::<i32>().map_err(|e| e.into()))?;
