@@ -1,20 +1,63 @@
 use std::error::Error;
 
-mod day6;
+mod day7;
 mod fancyiters;
 mod inputhandling;
 mod intcode;
 
 fn main() -> Result<(), Box<dyn Error>> {
-  let flat_directions: Vec<day6::OrbitalDirection> =
-    inputhandling::parse_input_per_line(6, |s| day6::OrbitalDirection::parse(s).map_err(|e| e.into()))?;
+  let vonNeumann : Vec<i32> = inputhandling::parse_csv_input(7, |s| s.parse::<i32>().map_err(|e| e.into()))?;
 
-    let graph = day6::generate_map(&flat_directions);
-    let santa_ancestors = day6::calculate_ancestors(&graph, day6::CelestialBody { one: 'S', two: 'A', three: 'N' });
-    let you_ancestors = day6::calculate_ancestors(&graph, day6::CelestialBody { one: 'Y', two: 'O', three: 'U' });
+  let mut max = 0;
 
+  for sequence in day7::phase_setting_generator() {
+    let cpu0 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu1 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu2 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu3 = intcode::Intcode::create(vonNeumann.clone());
+    let cpu4 = intcode::Intcode::create(vonNeumann.clone());
 
-    println!("The total number of orbital jumps required is {}", day6::calculate_most_common_ancestor(&santa_ancestors, &you_ancestors));
+    let mut amp0 = day7::Amplifier::create(sequence[0], 0, cpu0);
+    let mut amp1 = day7::Amplifier::create_no_value(sequence[1], cpu1);
+    let mut amp2 = day7::Amplifier::create_no_value(sequence[2], cpu2);
+    let mut amp3 = day7::Amplifier::create_no_value(sequence[3], cpu3);
+    let mut amp4 = day7::Amplifier::create_no_value(sequence[4], cpu4);
+
+    let mut halted = false;
+
+    while !halted {
+      amp1.input_signal = match amp0.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp2.input_signal = match amp1.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp3.input_signal = match amp2.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp4.input_signal = match amp3.run() {
+        day7::AmplifierState::Halt { value: x } => {halted = true; x}
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+
+      amp0.input_signal = match amp4.run() {
+        day7::AmplifierState::Halt { value: x } => { halted = true; x },
+        day7::AmplifierState::Hot { value: x } => x 
+      };
+    }
+
+    if amp0.input_signal > max {
+      max = amp0.input_signal;
+    }
+  }
+
+  println!("The maximum output is {}", max);
 
   Ok(())
 }
