@@ -1,13 +1,13 @@
 use std::error::Error;
 
-mod day7;
-mod fancyiters;
-mod inputhandling;
-mod intcode;
+//mod day7;
+//mod fancyiters;
+//mod inputhandling;
+//mod intcode;
 mod intcode_8086;
 
 fn main() -> Result<(), Box<dyn Error>> {
-  let vonNeumann : Vec<i32> = inputhandling::parse_csv_input(7, |s| s.parse::<i32>().map_err(|e| e.into()))?;
+  /*let vonNeumann : Vec<i32> = inputhandling::parse_csv_input(7, |s| s.parse::<i32>().map_err(|e| e.into()))?;
 
   let mut max = 0;
 
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   }
 
   println!("The maximum output is {}", max);
-
+*/
   Ok(())
 }
 

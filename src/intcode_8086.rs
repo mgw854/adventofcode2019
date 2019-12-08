@@ -25,15 +25,15 @@ impl Intcode8086 {
     }
   }
 
-  pub fn accept_input(&self, input: i32) {
-    self.input_sender.send(input);
+  pub fn get_input_port(&self) -> Sender<i32> {
+    self.input_sender.clone()
   }
 
-  pub fn retrieve_output(&self) -> i32 {
-    self.output_receiver.recv().unwrap()
+  pub fn get_output_port(&self) -> Receiver<i32> {
+    self.output_receiver.clone()
   }
 
-  pub fn process(&mut self) {
+  pub fn process(mut self) -> std::thread::JoinHandle<Self> {
     thread::spawn(move || {
       while self.instruction_pointer < self.von_neumann_tape.len() {
         let instruction = Intcode8086::decode_instruction(self.von_neumann_tape[self.instruction_pointer] as usize);
@@ -57,7 +57,9 @@ impl Intcode8086 {
             self.von_neumann_tape[store.address] = store.value;
         }
       }
-    });
+
+      self
+    })
   }
 
   pub fn get_memory_at(&self, position: usize) -> i32 {
@@ -67,7 +69,7 @@ impl Intcode8086 {
   fn decode_instruction(opcode: usize) -> Option<Instruction> {
     match opcode % 100 {
       1 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::Add(p[0], p[1])) }
-      1 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::Multiply(p[0], p[1])) }
+      2 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::Multiply(p[0], p[1])) }
       /*3 => Some(Instruction::StoreInput),
       4 => Some(Instruction::WriteOutput),
       5 => Some(Instruction::JumpIfTrue),
@@ -100,7 +102,7 @@ enum Instruction {
   Halt
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 enum ParameterMode {
   Position,
   Immediate,
@@ -117,6 +119,7 @@ impl ParameterMode {
     for at_position in 1..=number_of_positions {
       if at_position > chars.len() {
         res.push(ParameterMode::Position);
+        continue;
       }
 
       match chars[at_position - 1] {
@@ -167,27 +170,27 @@ mod tests {
     #[test]
     fn test_parsing_instructions() {
       let cpu = Intcode8086::initialize(parse_csv("1,0,0,0,99"));
-      cpu.process();
+      let cpu = cpu.process().join().unwrap();
       assert_eq!(cpu.get_memory_at(0), 2);
 
       let cpu = Intcode8086::initialize(parse_csv("2,3,0,3,99"));
-      cpu.process();
+      let cpu = cpu.process().join().unwrap();
       assert_eq!(cpu.get_memory_at(0), 2);
 
       let cpu = Intcode8086::initialize(parse_csv("2,4,4,5,99,0"));
-      cpu.process();
+      let cpu = cpu.process().join().unwrap();
       assert_eq!(cpu.get_memory_at(0), 2);
 
       let cpu = Intcode8086::initialize(parse_csv("1,1,1,4,99,5,6,0,99"));
-      cpu.process();
+      let cpu = cpu.process().join().unwrap();
       assert_eq!(cpu.get_memory_at(0), 30);
 
       let cpu = Intcode8086::initialize(parse_csv("1002,4,3,4,33"));
-      cpu.process();
+      let cpu = cpu.process().join().unwrap();
       assert_eq!(cpu.get_memory_at(4), 99); // pos 4
 
       let cpu = Intcode8086::initialize(parse_csv("1101,100,-1,4,0"));
-      cpu.process();
+      let cpu = cpu.process().join().unwrap();
       assert_eq!(cpu.get_memory_at(4), 99); // pos 4
     }
   }
