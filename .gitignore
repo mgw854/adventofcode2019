@@ -1,2 +1,3 @@
 /target
 **/*.rs.bk
+/src/day8/*.bmp

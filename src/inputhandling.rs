@@ -19,6 +19,17 @@ pub fn parse_input<T>(
         .collect()
 }
 
+pub fn get_input_chars(
+    day: u8,
+) -> Result<Vec<char>, Box<dyn Error>> {
+    let pathstr = format!(".\\src\\day{}\\input.txt", day);
+    let path = Path::new(&pathstr);
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    Result::Ok(contents.trim().chars().collect::<Vec<char>>())
+}
+
 pub fn parse_input_per_line<T>(
     day: u8,
     parser: fn(&str) -> Result<T, Box<dyn Error>>,

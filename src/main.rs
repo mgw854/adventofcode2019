@@ -1,65 +1,52 @@
 use std::error::Error;
+use std::collections::HashMap;
 
-mod day7;
-//mod fancyiters;
+mod fancyiters;
 mod inputhandling;
-mod intcode_8086;
 
 fn main() -> Result<(), Box<dyn Error>> {
-  let vonNeumann : Vec<i32> = inputhandling::parse_csv_input(7, |s| s.parse::<i32>().map_err(|e| e.into()))?;
+  let inputs = inputhandling::get_input_chars(8)?;
 
-  let mut max = 0;
+  let mut layers : HashMap<u32, HashMap<u8, u32>> = HashMap::new();
+  let mut layer = 1;
 
-  for sequence in day7::phase_setting_generator() {
-    let cpu0 = intcode_8086::Intcode8086::initialize(vonNeumann.clone());
-    let cpu1 = intcode_8086::Intcode8086::initialize(vonNeumann.clone());
-    let cpu2 = intcode_8086::Intcode8086::initialize(vonNeumann.clone());
-    let cpu3 = intcode_8086::Intcode8086::initialize(vonNeumann.clone());
-    let cpu4 = intcode_8086::Intcode8086::initialize(vonNeumann.clone());
-  }
-/*
-    let mut amp0 = day7::Amplifier::create(sequence[0], 0, cpu0);
-    let mut amp1 = day7::Amplifier::create_no_value(sequence[1], cpu1);
-    let mut amp2 = day7::Amplifier::create_no_value(sequence[2], cpu2);
-    let mut amp3 = day7::Amplifier::create_no_value(sequence[3], cpu3);
-    let mut amp4 = day7::Amplifier::create_no_value(sequence[4], cpu4);
-
-    let mut halted = false;
-
-    while !halted {
-      amp1.input_signal = match amp0.run() {
-        day7::AmplifierState::Halt { value: x } => {halted = true; x}
-        day7::AmplifierState::Hot { value: x } => x 
+  for chunk in inputs.chunks(25*6) {
+    let mut map : HashMap<u8, u32> = HashMap::new();
+    for c in chunk {
+      let cv = match c {
+        '0' => 0,
+        '1' => 1,
+        '2' => 2,
+        _ => panic!("Not supposed to get here")
       };
-
-      amp2.input_signal = match amp1.run() {
-        day7::AmplifierState::Halt { value: x } => {halted = true; x}
-        day7::AmplifierState::Hot { value: x } => x 
-      };
-
-      amp3.input_signal = match amp2.run() {
-        day7::AmplifierState::Halt { value: x } => {halted = true; x}
-        day7::AmplifierState::Hot { value: x } => x 
-      };
-
-      amp4.input_signal = match amp3.run() {
-        day7::AmplifierState::Halt { value: x } => {halted = true; x}
-        day7::AmplifierState::Hot { value: x } => x 
-      };
-
-      amp0.input_signal = match amp4.run() {
-        day7::AmplifierState::Halt { value: x } => { halted = true; x },
-        day7::AmplifierState::Hot { value: x } => x 
-      };
+      let count = map.get(&cv).cloned().unwrap_or(0);
+      map.insert(cv, count + 1);
     }
 
-    if amp0.input_signal > max {
-      max = amp0.input_signal;
-    }
+    layers.insert(layer, map);
+
+    layer += 1;
   }
 
-  println!("The maximum output is {}", max);
-*/
+  use bmp::{ Image, Pixel };
+
+  let mut image = Image::new(25, 6);
+
+  for i in 0..25 as u32 {
+    for j in 0..6 as u32 {
+      for chunk in inputs.chunks(25*6) {
+       match chunk.iter().skip((j as usize * 25) + i as usize).nth(0).unwrap() {
+         '0' => { image.set_pixel(i, j, Pixel::new(0,0,0)); break; },
+         '1' => { image.set_pixel(i, j, Pixel::new(255,255,255)); break; }
+         '2' => continue,
+         _ => panic!("Can't get here")
+        }
+      }
+    }
+  }
+  
+  let _ = image.save(".\\src\\day8\\img.bmp");
+
   Ok(())
 }
 
