@@ -4,30 +4,32 @@ use bus::Bus;
 
 pub struct Intcode8086 {
   instruction_pointer: usize,
-  von_neumann_tape: Vec<i32>,
-  input_sender: Sender<i32>,
-  input_receiver: Receiver<i32>,
-  output_bus: Bus<i32>
+  relative_base_pointer: usize,
+  von_neumann_tape: Vec<i64>,
+  input_sender: Sender<i64>,
+  input_receiver: Receiver<i64>,
+  output_bus: Bus<i64>
 }
 
 impl Intcode8086 {
-  pub fn initialize(von_neumann_tape: Vec<i32>) -> Intcode8086 {
+  pub fn initialize(von_neumann_tape: Vec<i64>) -> Intcode8086 {
     let (i_s, i_r) = unbounded();
 
     Intcode8086 {
       instruction_pointer: 0,
+      relative_base_pointer: 0,
       von_neumann_tape: von_neumann_tape,
       input_sender: i_s,
       input_receiver: i_r,
-      output_bus: Bus::new(10)
+      output_bus: Bus::new(100)
     }
   }
 
-  pub fn get_input_port(&self) -> Sender<i32> {
+  pub fn get_input_port(&self) -> Sender<i64> {
     self.input_sender.clone()
   }
 
-  pub fn get_output_port(&mut self) -> bus::BusReader<i32> {
+  pub fn get_output_port(&mut self) -> bus::BusReader<i64> {
     self.output_bus.add_rx()
   }
 
@@ -37,14 +39,15 @@ impl Intcode8086 {
         let instruction = Intcode8086::decode_instruction(self.von_neumann_tape[self.instruction_pointer] as usize);
 
         let res = match instruction {
-          Some(Instruction::Add(arg1, arg2)) => self.three_arg_fn(arg1, arg2, |a, b| a + b),
-          Some(Instruction::Multiply(arg1, arg2)) => self.three_arg_fn(arg1, arg2, |a, b| a * b),
-          Some(Instruction::StoreInput) => self.store_input(),
+          Some(Instruction::Add(arg1, arg2, arg3)) => self.three_arg_fn(arg1, arg2, |a, b| a + b, arg3),
+          Some(Instruction::Multiply(arg1, arg2, arg3)) => self.three_arg_fn(arg1, arg2, |a, b| a * b, arg3),
+          Some(Instruction::StoreInput(arg1)) => self.store_input(arg1),
           Some(Instruction::WriteOutput(arg1)) => self.write_output(arg1),
           Some(Instruction::JumpIfTrue(arg1, arg2)) => self.jump(arg1, arg2, true),
           Some(Instruction::JumpIfFalse(arg1, arg2)) => self.jump(arg1, arg2, false),
-          Some(Instruction::LessThan(arg1, arg2)) => self.compare_args(arg1, arg2, |a, b| a < b),
-          Some(Instruction::Equals(arg1, arg2)) => self.compare_args(arg1, arg2, |a, b| a == b),
+          Some(Instruction::LessThan(arg1, arg2, arg3)) => self.compare_args(arg1, arg2, |a, b| a < b, arg3),
+          Some(Instruction::Equals(arg1, arg2, arg3)) => self.compare_args(arg1, arg2, |a, b| a == b, arg3),
+          Some(Instruction::AdjustRelativeBase(arg1)) => self.adjust_relative_base(arg1),
           Some(Instruction::Halt) => InstructionResult {
             next_instruction_pointer: None,
             store: None,
@@ -58,7 +61,13 @@ impl Intcode8086 {
         };
 
         if let Some(store) = res.store {
-            self.von_neumann_tape[store.address] = store.value;
+          if store.address >= self.von_neumann_tape.len() {
+            for i in self.von_neumann_tape.len()..=store.address {
+              self.von_neumann_tape.push(0);
+            }
+          }
+
+          self.von_neumann_tape[store.address] = store.value;
         }
       }
 
@@ -66,27 +75,28 @@ impl Intcode8086 {
     })
   }
 
-  pub fn get_memory_at(&self, position: usize) -> i32 {
+  pub fn get_memory_at(&self, position: usize) -> i64 {
     self.von_neumann_tape[position]
   }
 
   fn decode_instruction(opcode: usize) -> Option<Instruction> {
     match opcode % 100 {
-      1 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::Add(p[0], p[1])) }
-      2 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::Multiply(p[0], p[1])) }
-      3 => Some(Instruction::StoreInput),
+      1 => { let p = ParameterMode::parse(opcode, 3); Some(Instruction::Add(p[0], p[1], p[2])) }
+      2 => { let p = ParameterMode::parse(opcode, 3); Some(Instruction::Multiply(p[0], p[1], p[2])) }
+      3 => { let p = ParameterMode::parse(opcode, 1); Some(Instruction::StoreInput(p[0])) },
       4 => { let p = ParameterMode::parse(opcode, 1); Some(Instruction::WriteOutput(p[0])) },
       5 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::JumpIfTrue(p[0], p[1])) },
       6 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::JumpIfFalse(p[0], p[1])) },
-      7 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::LessThan(p[0], p[1])) },
-      8 => { let p = ParameterMode::parse(opcode, 2); Some(Instruction::Equals(p[0], p[1])) },
+      7 => { let p = ParameterMode::parse(opcode, 3); Some(Instruction::LessThan(p[0], p[1], p[2])) },
+      8 => { let p = ParameterMode::parse(opcode, 3); Some(Instruction::Equals(p[0], p[1], p[2])) },
+      9 => { let p = ParameterMode::parse(opcode, 1); Some(Instruction::AdjustRelativeBase(p[0])) }
       99 => Some(Instruction::Halt),
       _ => None,
     }
   }
 
-  fn three_arg_fn(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i32, i32) -> i32) -> InstructionResult {
-    let store_address: usize = self.von_neumann_tape[self.instruction_pointer + 3] as usize;
+  fn three_arg_fn(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i64, i64) -> i64, arg3: ParameterMode) -> InstructionResult {
+    let store_address: usize = arg3.set(self, 3);
     let store_value = func(arg1.get(self, 1), arg2.get(self, 2));
 
     InstructionResult {
@@ -123,8 +133,8 @@ impl Intcode8086 {
     }
   }
 
-  fn compare_args(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i32, i32) -> bool) -> InstructionResult {
-    let store_address: usize = self.von_neumann_tape[self.instruction_pointer + 3] as usize;
+  fn compare_args(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i64, i64) -> bool, arg3: ParameterMode) -> InstructionResult {
+    let store_address: usize = arg3.set(self, 3);
     let result = func(arg1.get(self, 1), arg2.get(self, 2));
 
     InstructionResult {
@@ -136,11 +146,19 @@ impl Intcode8086 {
     }
   }
 
-  fn store_input(&self) -> InstructionResult {
+  fn store_input(&mut self, arg1: ParameterMode) -> InstructionResult {
+    let address = arg1.set(self, 1);
+    
+    if address >= self.von_neumann_tape.len() {
+      for i in self.von_neumann_tape.len()..=address {
+        self.von_neumann_tape.push(0);
+      }
+    }
+
     InstructionResult {
       next_instruction_pointer: Some(self.instruction_pointer + 2),
       store: Some(StoreInstruction {
-        address: self.von_neumann_tape[self.instruction_pointer + 1] as usize,
+        address: address,
         value: self.input_receiver.recv().unwrap()
       })
     }    
@@ -153,17 +171,27 @@ impl Intcode8086 {
       store: None,
     }
   }
+
+  fn adjust_relative_base(&mut self, arg1: ParameterMode) -> InstructionResult {
+    self.relative_base_pointer = (self.relative_base_pointer as i64 + arg1.get(self, 1)) as usize;
+
+    InstructionResult {
+      next_instruction_pointer: Some(self.instruction_pointer + 2),
+      store: None,
+    }
+  }
 }
 
 enum Instruction {
-  Add(ParameterMode, ParameterMode),
-  Multiply(ParameterMode, ParameterMode),
-  StoreInput,
+  Add(ParameterMode, ParameterMode, ParameterMode),
+  Multiply(ParameterMode, ParameterMode, ParameterMode),
+  StoreInput(ParameterMode),
   WriteOutput(ParameterMode),
   JumpIfTrue(ParameterMode, ParameterMode),
   JumpIfFalse(ParameterMode, ParameterMode),
-  LessThan(ParameterMode, ParameterMode),
-  Equals(ParameterMode, ParameterMode),
+  LessThan(ParameterMode, ParameterMode, ParameterMode),
+  Equals(ParameterMode, ParameterMode, ParameterMode),
+  AdjustRelativeBase(ParameterMode),
 
   Halt
 }
@@ -172,6 +200,17 @@ enum Instruction {
 enum ParameterMode {
   Position,
   Immediate,
+  Relative
+}
+
+impl std::fmt::Display for ParameterMode {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      ParameterMode::Position => write!(f, "Position"),
+      ParameterMode::Immediate => write!(f, "Immediate"),
+      ParameterMode::Relative => write!(f, "Relative")
+    }
+  }
 }
 
 impl ParameterMode {
@@ -191,24 +230,39 @@ impl ParameterMode {
       match chars[at_position - 1] {
         '0' => res.push(ParameterMode::Position),
         '1' => res.push(ParameterMode::Immediate),
-        _ => continue,
+        '2' => res.push(ParameterMode::Relative),
+        _ => continue
       };
     }
 
     res
   }
 
-  fn get(&self, cpu: &Intcode8086, at_position: usize) -> i32 {
+  fn get(&self, cpu: &Intcode8086, at_position: usize) -> i64 {
+    let addr = match self {
+      ParameterMode::Immediate => cpu.instruction_pointer + at_position,
+      ParameterMode::Position => cpu.von_neumann_tape[cpu.instruction_pointer + at_position] as usize,
+      ParameterMode::Relative => (cpu.von_neumann_tape[cpu.instruction_pointer + at_position] + cpu.relative_base_pointer as i64) as usize
+    };
+
+    if addr >= cpu.von_neumann_tape.len() {
+      0      
+    } else {
+      cpu.von_neumann_tape[addr]
+    }
+  }
+
+  fn set(&self, cpu: &Intcode8086, at_position: usize) -> usize {
     match self {
-      ParameterMode::Immediate => cpu.von_neumann_tape[cpu.instruction_pointer + at_position],
-      ParameterMode::Position => cpu.von_neumann_tape[cpu.von_neumann_tape[cpu.instruction_pointer + at_position] as usize]
+      ParameterMode::Relative => (cpu.relative_base_pointer as i64 + cpu.von_neumann_tape[cpu.instruction_pointer + at_position]) as usize,
+      _ => cpu.von_neumann_tape[cpu.instruction_pointer + at_position] as usize
     }
   }
 }
 
 struct InstructionArgument {
   mode: ParameterMode,
-  value: i32
+  value: i64
 }
 
 struct InstructionResult {
@@ -218,18 +272,18 @@ struct InstructionResult {
 
 struct StoreInstruction {
   address: usize,
-  value: i32,
+  value: i64,
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
 
-  fn parse_csv(input: &str) -> Vec<i32> {
+  fn parse_csv(input: &str) -> Vec<i64> {
       input
           .split(",")
           .map(|s| s.trim())
-          .map(|s| s.parse::<i32>().unwrap())
+          .map(|s| s.parse::<i64>().unwrap())
           .collect()
   }
 
@@ -388,6 +442,66 @@ mod tests {
     handle.join().expect("");
 
     assert_eq!(io.recv().unwrap(), 1001);
+  }
+
+  #[test]
+  fn test_day9_relative_base() {
+    let mut cpu = Intcode8086::initialize(parse_csv("109,2000,109,19,99"));
+    cpu = cpu.process().join().expect("");
+    assert_eq!(cpu.relative_base_pointer, 2019);
+  }
+
+  #[test]
+  fn test_day9_part1_copy() {
+    let mut cpu = Intcode8086::initialize(parse_csv("109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99"));
+    let mut io = cpu.get_output_port();
+
+    let handle = cpu.process();
+
+    handle.join().expect("");
+
+    assert_eq!(io.recv().unwrap(), 109);
+    assert_eq!(io.recv().unwrap(), 1);
+    assert_eq!(io.recv().unwrap(), 204);
+    assert_eq!(io.recv().unwrap(), -1);
+    assert_eq!(io.recv().unwrap(), 1001);
+    assert_eq!(io.recv().unwrap(), 100);
+    assert_eq!(io.recv().unwrap(), 1);
+    assert_eq!(io.recv().unwrap(), 100);
+    assert_eq!(io.recv().unwrap(), 1008);
+    assert_eq!(io.recv().unwrap(), 100);
+    assert_eq!(io.recv().unwrap(), 16);
+    assert_eq!(io.recv().unwrap(), 101);
+    assert_eq!(io.recv().unwrap(), 1006);
+    assert_eq!(io.recv().unwrap(), 101);
+    assert_eq!(io.recv().unwrap(), 0);
+    assert_eq!(io.recv().unwrap(), 99);
+  }
+
+  #[test]
+  fn test_day9_part1_output16digits() {
+    let mut cpu = Intcode8086::initialize(parse_csv("1102,34915192,34915192,7,4,7,99,0"));
+    let mut io = cpu.get_output_port();
+
+    let handle = cpu.process();
+
+    handle.join().expect("");
+
+    let digits = io.recv().unwrap().to_string().len();
+
+    assert_eq!(digits, 16);
+  }
+
+  #[test]
+  fn test_day9_part1_output1125899906842624() {
+    let mut cpu = Intcode8086::initialize(parse_csv("104,1125899906842624,99"));
+    let mut io = cpu.get_output_port();
+
+    let handle = cpu.process();
+
+    handle.join().expect("");
+
+    assert_eq!(io.recv().unwrap(), 1125899906842624);
   }
 
   #[test]
