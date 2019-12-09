@@ -4,14 +4,14 @@ use bus::Bus;
 
 pub struct Intcode8086 {
   instruction_pointer: usize,
-  von_neumann_tape: Vec<i32>,
-  input_sender: Sender<i32>,
-  input_receiver: Receiver<i32>,
-  output_bus: Bus<i32>
+  von_neumann_tape: Vec<i64>,
+  input_sender: Sender<i64>,
+  input_receiver: Receiver<i64>,
+  output_bus: Bus<i64>
 }
 
 impl Intcode8086 {
-  pub fn initialize(von_neumann_tape: Vec<i32>) -> Intcode8086 {
+  pub fn initialize(von_neumann_tape: Vec<i64>) -> Intcode8086 {
     let (i_s, i_r) = unbounded();
 
     Intcode8086 {
@@ -23,11 +23,11 @@ impl Intcode8086 {
     }
   }
 
-  pub fn get_input_port(&self) -> Sender<i32> {
+  pub fn get_input_port(&self) -> Sender<i64> {
     self.input_sender.clone()
   }
 
-  pub fn get_output_port(&mut self) -> bus::BusReader<i32> {
+  pub fn get_output_port(&mut self) -> bus::BusReader<i64> {
     self.output_bus.add_rx()
   }
 
@@ -66,7 +66,7 @@ impl Intcode8086 {
     })
   }
 
-  pub fn get_memory_at(&self, position: usize) -> i32 {
+  pub fn get_memory_at(&self, position: usize) -> i64 {
     self.von_neumann_tape[position]
   }
 
@@ -85,7 +85,7 @@ impl Intcode8086 {
     }
   }
 
-  fn three_arg_fn(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i32, i32) -> i32) -> InstructionResult {
+  fn three_arg_fn(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i64, i64) -> i64) -> InstructionResult {
     let store_address: usize = self.von_neumann_tape[self.instruction_pointer + 3] as usize;
     let store_value = func(arg1.get(self, 1), arg2.get(self, 2));
 
@@ -123,7 +123,7 @@ impl Intcode8086 {
     }
   }
 
-  fn compare_args(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i32, i32) -> bool) -> InstructionResult {
+  fn compare_args(&self, arg1: ParameterMode, arg2: ParameterMode, func: fn(i64, i64) -> bool) -> InstructionResult {
     let store_address: usize = self.von_neumann_tape[self.instruction_pointer + 3] as usize;
     let result = func(arg1.get(self, 1), arg2.get(self, 2));
 
@@ -198,7 +198,7 @@ impl ParameterMode {
     res
   }
 
-  fn get(&self, cpu: &Intcode8086, at_position: usize) -> i32 {
+  fn get(&self, cpu: &Intcode8086, at_position: usize) -> i64 {
     match self {
       ParameterMode::Immediate => cpu.von_neumann_tape[cpu.instruction_pointer + at_position],
       ParameterMode::Position => cpu.von_neumann_tape[cpu.von_neumann_tape[cpu.instruction_pointer + at_position] as usize]
@@ -208,7 +208,7 @@ impl ParameterMode {
 
 struct InstructionArgument {
   mode: ParameterMode,
-  value: i32
+  value: i64
 }
 
 struct InstructionResult {
@@ -218,18 +218,18 @@ struct InstructionResult {
 
 struct StoreInstruction {
   address: usize,
-  value: i32,
+  value: i64,
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
 
-  fn parse_csv(input: &str) -> Vec<i32> {
+  fn parse_csv(input: &str) -> Vec<i64> {
       input
           .split(",")
           .map(|s| s.trim())
-          .map(|s| s.parse::<i32>().unwrap())
+          .map(|s| s.parse::<i64>().unwrap())
           .collect()
   }
 

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 mod fancyiters;
 mod inputhandling;
+mod intcode_8086;
 
 fn main() -> Result<(), Box<dyn Error>> {
   let inputs = inputhandling::get_input_chars(8)?;
