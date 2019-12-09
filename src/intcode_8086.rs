@@ -136,11 +136,19 @@ impl Intcode8086 {
     }
   }
 
-  fn store_input(&self) -> InstructionResult {
+  fn store_input(&mut self) -> InstructionResult {
+    let address = self.von_neumann_tape[self.instruction_pointer + 1] as usize;
+
+    if address > self.von_neumann_tape.len() {
+      for i in self.von_neumann_tape.len()..=address {
+        self.von_neumann_tape[i] = 0;
+      }
+    }
+
     InstructionResult {
       next_instruction_pointer: Some(self.instruction_pointer + 2),
       store: Some(StoreInstruction {
-        address: self.von_neumann_tape[self.instruction_pointer + 1] as usize,
+        address: address,
         value: self.input_receiver.recv().unwrap()
       })
     }    
